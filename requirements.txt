@@ -1,9 +1,0 @@
-pillow
-requests
-psutil
-pyautogui
-pyperclip
-pynput
-opencv-python
-pywin32
-pyinstaller
